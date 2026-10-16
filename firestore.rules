@@ -1,8 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function validNumber(value) {
+      return value is int || value is float;
+    }
+
+    function validProduct(data) {
+      return data.keys().hasOnly([
+        'name', 'sku', 'category', 'cost', 'price', 'stock', 'reorderPoint',
+        'sold', 'color', 'archived', 'schemaVersion', 'createdAt', 'updatedAt'
+      ])
+      && data.name is string && data.name.size() >= 1 && data.name.size() <= 160
+      && data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 64
+      && data.category is string && data.category.size() <= 80
+      && validNumber(data.cost) && data.cost >= 0
+      && validNumber(data.price) && data.price >= 0
+      && data.stock is int && data.stock >= 0
+      && data.reorderPoint is int && data.reorderPoint >= 0
+      && data.sold is int && data.sold >= 0
+      && data.schemaVersion == 1;
+    }
+
+    function validMovement(data) {
+      return data.keys().hasOnly([
+        'type', 'title', 'productId', 'productName', 'date', 'qty', 'amount',
+        'unitCost', 'unitPrice', 'note', 'schemaVersion', 'createdAt'
+      ])
+      && (data.type == 'sale' || data.type == 'purchase')
+      && data.title is string && data.productId is string && data.productName is string
+      && data.date is string && data.qty is int && data.qty > 0
+      && validNumber(data.amount) && data.amount >= 0
+      && validNumber(data.unitCost) && data.unitCost >= 0
+      && validNumber(data.unitPrice) && data.unitPrice >= 0
+      && data.note is string && data.note.size() <= 500
+      && data.schemaVersion == 1;
+    }
+
+    match /users/{userId}/products/{productId} {
+      allow read: if signedIn(userId);
+      allow create: if signedIn(userId) && validProduct(request.resource.data);
+      allow update: if signedIn(userId)
+        && validProduct(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.sold >= resource.data.sold;
+      allow delete: if false;
+    }
+
+    match /users/{userId}/transactions/{movementId} {
+      allow read: if signedIn(userId);
+      allow create: if signedIn(userId) && validMovement(request.resource.data);
+      allow update, delete: if false;
+    }
+
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if signedIn(userId);
+      allow write: if false;
     }
   }
 }
