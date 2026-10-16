@@ -11,11 +11,12 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "firebase": "^13.0.0",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest",
-    "recharts": "latest"
+    "recharts": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
     "gh-pages": "latest"
